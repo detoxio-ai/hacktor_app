@@ -32,9 +32,7 @@ RUN poetry install --no-root --only main
 # Copy the project files
 COPY --chown=dtx:dtx . .
 
-# Expose Streamlit's default port
-EXPOSE 8501
-
 # Define the command to run the application
-CMD ["poetry", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# CMD ["poetry", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
 
+CMD ["poetry", "run", "python", "gradio_app.py"]
