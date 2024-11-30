@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"  # Expose Streamlit app to the host machine
+    restart: always
+    environment:
+      - DETOXIO_API_KEY=${DETOXIO_API_KEY}  # Replace with your actual API key or set it as an environment variable
