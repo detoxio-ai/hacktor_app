@@ -17,6 +17,7 @@ last_prompt = ""  # Keep track of the last generated prompt
 
 # Determine DETOXIO_API_KEY
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
+app_title = os.getenv("TITLE", "AI Red Teaming Companion")
 custom_api_key = None  # User-provided API key
 
 # Initialize Hacktor Client
@@ -63,15 +64,16 @@ def evaluate_text(prompt, response):
 with gr.Blocks(theme=gr.themes.Ocean()) as demo:
     # Title
     gr.HTML(
-        """
+        f"""
         <h1 style="text-align: center; background: -webkit-linear-gradient(#ff7f50, #1e90ff, #32cd32); -webkit-background-clip: text; color: transparent; font-size: 3.5em;">
-            Detoxio AI Demo
+            {app_title}
         </h1>
         <div style="font-size: small; color: gray; text-align: center;">
-            Try Hacktor Tool: <a href="https://github.com/detoxio-ai/hacktor" target="_blank">https://github.com/detoxio-ai/hacktor</a>
+            Try Command Line Tool: <a href="https://github.com/detoxio-ai/hacktor" target="_blank">https://github.com/detoxio-ai/hacktor</a>
         </div>
         """
     )
+
 
     # Tabs for Generate and Evaluate
     with gr.Tab("Generate Prompt"):
@@ -105,16 +107,6 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             outputs=[evaluation_result],
         )
 
-    # Footer
-    gr.HTML(
-        """
-        <hr>
-        <div style="text-align: center; font-size: 14px;">
-            Powered by <a href="https://detoxio.ai" target="_blank" style="color: #007BFF;">Detoxio AI</a>
-        </div>
-        """
-    )
-
     # Advanced Settings at the Bottom
     with gr.Accordion("Advanced Settings", open=False):
         gr.Markdown("### Add or Update DETOXIO_API_KEY")
@@ -141,6 +133,17 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             </div>
             """
         )
+
+    # Footer
+    gr.HTML(
+        """
+        <hr>
+        <div style="text-align: center; font-size: 14px;">
+            Powered by <a href="https://detoxio.ai" target="_blank" style="color: #007BFF;">Detoxio AI</a>
+        </div>
+        """
+    )
+
 
     # Custom CSS for Button Sizing
     demo.css = """
