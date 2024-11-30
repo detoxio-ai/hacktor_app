@@ -16,18 +16,24 @@ click_count = 0  # Track the number of user actions
 last_prompt = ""  # Keep track of the last generated prompt
 
 # Determine DETOXIO_API_KEY
-detoxio_api_key = os.getenv("DETOXIO_API_KEY", "")
-if not detoxio_api_key:
-    detoxio_api_key = "YOUR_DEFAULT_API_KEY"  # Replace with a default API key or user-provided key
-
-# Determine Server Port
-server_port = int(os.getenv("SERVER_PORT", 7860))  # Default to 7860 if not set
+default_api_key = os.getenv("DETOXIO_API_KEY", "")
+custom_api_key = None  # User-provided API key
 
 # Initialize Hacktor Client
-client = HacktorClient(detoxio_api_key)
+client = HacktorClient(default_api_key)
 
 
 # Functions
+def set_api_key(api_key):
+    """
+    Set the custom API key from user input in advanced settings.
+    """
+    global client, custom_api_key
+    custom_api_key = api_key
+    client = HacktorClient(custom_api_key or default_api_key)
+    return f"{'Custom Key in Use' if custom_api_key else 'System Default Key in Use'}"
+
+
 def generate_prompt(attack_module):
     """
     Generate a prompt based on the selected attack module.
@@ -54,7 +60,7 @@ def evaluate_text(prompt, response):
 
 
 # Gradio App with Blocks
-with gr.Blocks() as demo:
+with gr.Blocks(theme=gr.themes.Ocean()) as demo:
     # Title
     gr.HTML(
         """
@@ -74,9 +80,10 @@ with gr.Blocks() as demo:
             label="Attack Module",
             choices=[""] + list(HacktorClient.ATTACK_MODULES_MAP.keys()),  # Default to empty
             value="",
+            info="Select an attack module to generate a prompt.",
         )
-        generate_btn = gr.Button("Generate Prompt")
-        generated_prompt = gr.Textbox(label="Generated Prompt", lines=5)
+        generate_btn = gr.Button("Generate Prompt", elem_classes=["small-button"])
+        generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False)
         
         # Generate button interaction
         generate_btn.click(
@@ -87,8 +94,8 @@ with gr.Blocks() as demo:
 
     with gr.Tab("Evaluate Text"):
         gr.Markdown("## Evaluate Your Text")
-        response = gr.Textbox(label="Enter Response for Evaluation", lines=5)
-        evaluate_btn = gr.Button("Evaluate Text")
+        response = gr.Textbox(label="Enter Response for Evaluation", lines=5, info="Enter the response you want to evaluate.")
+        evaluate_btn = gr.Button("Evaluate Text", elem_classes=["small-button"])
         evaluation_result = gr.JSON(label="Evaluation Results")
 
         # Evaluate button interaction
@@ -108,6 +115,42 @@ with gr.Blocks() as demo:
         """
     )
 
+    # Advanced Settings at the Bottom
+    with gr.Accordion("Advanced Settings", open=False):
+        gr.Markdown("### Add or Update DETOXIO_API_KEY")
+        api_key_input = gr.Textbox(
+            label="DETOXIO_API_KEY (Optional)",
+            placeholder="Enter your DETOXIO_API_KEY here",
+            type="password",
+            info="Provide your DETOXIO_API_KEY for advanced features.",
+        )
+        update_api_key_btn = gr.Button("Update API Key", elem_classes=["small-button"])
+        api_key_status = gr.Textbox(label="API Key Status", value="Using System Default Key", interactive=False)
+
+        # API Key update interaction
+        update_api_key_btn.click(
+            fn=set_api_key,
+            inputs=[api_key_input],
+            outputs=[api_key_status]
+        )
+
+        gr.Markdown(
+            """
+            <div style="font-size: small; color: gray;">
+                Apply for the API Key: <a href="https://detoxio.ai/contact_us" target="_blank">https://detoxio.ai/contact_us</a>
+            </div>
+            """
+        )
+
+    # Custom CSS for Button Sizing
+    demo.css = """
+    .small-button {
+        width: 200px !important;
+        padding: 8px 16px !important;
+        font-size: 16px !important;
+    }
+    """
+
 # Launch the app
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=server_port)
+    demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("SERVER_PORT", 7860)))

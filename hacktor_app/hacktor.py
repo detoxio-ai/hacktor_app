@@ -1,5 +1,6 @@
 import requests
 import base64
+import logging
 
 
 # Hacktor Client
@@ -46,6 +47,12 @@ class HacktorClient:
                 return prompt_content
             else:
                 return "No prompt generated."
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                logging.error("Forbidden - Invalid API Key")
+                return "Forbidden - Invalid API Key - Check your Key"
+            logging.error(f"HTTP error occurred: {e}")
+            return f"HTTP error: {e}"
         except requests.exceptions.RequestException as e:
             logging.error(f"Error generating prompt: {e}")
             return f"Error generating prompt: {e}"
@@ -94,6 +101,12 @@ class HacktorClient:
                     "details": results,
                 }
 
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                logging.error("Forbidden - Invalid API Key")
+                return {"error": "Forbidden - Invalid API Key - Check your Key"}
+            logging.error(f"HTTP error occurred: {e}")
+            return {"error": f"HTTP error: {e}"}
         except requests.exceptions.RequestException as e:
             logging.error(f"Error evaluating interaction: {e}")
             return {"error": f"Error evaluating interaction: {e}"}
