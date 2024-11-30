@@ -40,8 +40,8 @@ def generate_prompt(attack_module):
     Generate a prompt based on the selected attack module.
     """
     global click_count, last_prompt
-    if click_count >= MAX_USER_CLICK:
-        return "Error: You have reached the maximum number of actions. Please refresh the session."
+    # if click_count >= MAX_USER_CLICK:
+    #     return "Error: You have reached the maximum number of actions. Please refresh the session."
     click_count += 1
     last_prompt = client.generate(attack_module)
     return last_prompt
@@ -62,6 +62,7 @@ def evaluate_text(prompt, response):
 
 # Gradio App with Blocks
 with gr.Blocks(theme=gr.themes.Ocean()) as demo:
+    
     # Title
     gr.HTML(
         f"""
