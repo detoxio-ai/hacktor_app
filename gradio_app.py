@@ -52,8 +52,8 @@ def evaluate_text(prompt, response):
     Evaluate the response based on the last generated prompt.
     """
     global click_count
-    if click_count >= MAX_USER_CLICK:
-        return {"Error": "You have reached the maximum number of actions. Please refresh the session."}
+    # if click_count >= MAX_USER_CLICK:
+    #     return {"Error": "You have reached the maximum number of actions. Please refresh the session."}
     click_count += 1
     if not prompt:
         return {"Error": "No prompt provided for evaluation."}
