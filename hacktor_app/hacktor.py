@@ -57,6 +57,9 @@ class HacktorClient:
             if response.status_code == 403:
                 logging.error("Forbidden - Invalid API Key")
                 return "Forbidden - Invalid API Key - Check your Key"
+            elif response.status_code == 404:
+                logging.error("Prompts Not Found for the given filer")
+                return "Prompts Not Found for the given filer"
             logging.error(f"HTTP error occurred: {e}")
             return f"HTTP error: {e}"
         except requests.exceptions.RequestException as e:
