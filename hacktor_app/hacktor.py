@@ -1,7 +1,8 @@
+import os
 import requests
 import base64
 import logging
-
+from dtx_apis_prompts_utils.prompt import DtxPromptServiceOutputFormatParser
 
 # Hacktor Client
 class HacktorClient:
@@ -10,12 +11,14 @@ class HacktorClient:
         "LLM-RISKS": "DETOXIO",
         "JAILBREAK-BENCH": "DETOXIO.JAILBREAKBENCH",
         "ADVBENCH": "DETOXIO.ADVBENCH",
+        "LLM-RULES": "DETOXIO.LLM_RULES"
     }
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, dtx_hostname:str=""):
         self.api_key = api_key
-        self.generate_url = "https://api.detoxio.ai/dtx.services.prompts.v1.PromptService/GeneratePrompts"
-        self.evaluate_url = "https://api.detoxio.ai/dtx.services.prompts.v1.PromptService/EvaluateModelInteraction"
+        dtx_hostname = dtx_hostname or "api.detoxio.ai"
+        self.generate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/GeneratePrompts"
+        self.evaluate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/EvaluateModelInteraction"
 
     def generate(self, attack_module, count=1):
         payload = {
@@ -39,10 +42,13 @@ class HacktorClient:
             if "prompts" in data and len(data["prompts"]) > 0:
                 prompt_data = data["prompts"][0]
                 prompt_content = prompt_data["data"]["content"]
+                
+                dtx_prompt = DtxPromptServiceOutputFormatParser.parse(prompt_data)                
+                prompt_content = dtx_prompt.prompt_as_str()
 
-                # Decode if base64 encoded
-                if "_prompt_encoding" in prompt_data.get("sourceLabels", {}) and prompt_data["sourceLabels"]["_prompt_encoding"] == "base64":
-                    prompt_content = base64.b64decode(prompt_content).decode("utf-8")
+                # # Decode if base64 encoded
+                # if "_prompt_encoding" in prompt_data.get("sourceLabels", {}) and prompt_data["sourceLabels"]["_prompt_encoding"] == "base64":
+                #     prompt_content = base64.b64decode(prompt_content).decode("utf-8")
 
                 return prompt_content
             else:

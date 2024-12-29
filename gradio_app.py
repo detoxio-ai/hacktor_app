@@ -17,11 +17,16 @@ last_prompt = ""  # Keep track of the last generated prompt
 
 # Determine DETOXIO_API_KEY
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
+dtx_hostname = os.getenv("DETOXIO_API_HOST", "api.detoxio.ai")
+
+if not default_api_key:
+    raise ValueError("Missing Detoxio API Key")
+
 app_title = os.getenv("TITLE", "AI Red Teaming Companion")
 custom_api_key = None  # User-provided API key
 
 # Initialize Hacktor Client
-client = HacktorClient(default_api_key)
+client = HacktorClient(default_api_key, dtx_hostname)
 
 
 # Functions
