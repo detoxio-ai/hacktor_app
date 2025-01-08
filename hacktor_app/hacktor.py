@@ -11,7 +11,8 @@ class HacktorClient:
         "LLM-RISKS": "DETOXIO",
         "JAILBREAK-BENCH": "DETOXIO.JAILBREAKBENCH",
         "ADVBENCH": "DETOXIO.ADVBENCH",
-        "LLM-RULES": "DETOXIO.LLM_RULES"
+        "LLM-RULES": "DETOXIO.LLM_RULES",
+        "HACKPROMPT": "DETOXIO.HACKPROMPT"
     }
 
     def __init__(self, api_key, dtx_hostname:str=""):
