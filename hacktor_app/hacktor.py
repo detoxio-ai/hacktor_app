@@ -213,7 +213,7 @@ class HacktorClient:
         self.generate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/GeneratePrompts"
         self.evaluate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/EvaluateModelInteraction"
         self.update_prompt_woth_goal = PromptWithGoalGenerator()
-        self._dump_file = open("prompt_goal_dump.jsonl", "a")
+        self._dump_file = open("/tmp/prompt_goal_dump.jsonl", "a")
 
     def generate(self, attack_module, goal=None, count=1):
         payload = {
