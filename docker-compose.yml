@@ -11,3 +11,4 @@ services:
     environment:
       - DETOXIO_API_KEY=${DETOXIO_API_KEY}  # Replace with your actual API key or set it as an environment variable
       - SERVER_PORT=${SERVER_PORT}
+      - GROQ_API_KEY=${GROQ_API_KEY}

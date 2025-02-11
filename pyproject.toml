@@ -11,6 +11,9 @@ streamlit = "^1.40.2"
 python-dotenv = "^1.0.1"
 gradio = "^5.7.1"
 dtx-apis-prompts-utils = "^0.2.0"
+langchain-groq = "^0.2.4"
+tenacity = "^9.0.0"
+pydantic = "^2.10.6"
 
 
 [build-system]
