@@ -112,7 +112,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         )
         goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt.")
         generate_btn = gr.Button("Generate Prompt", scale=0)
-        generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False)
+        generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False, show_copy_button=True)
         with gr.Accordion("Techniques Used", open=False):
             technique_display = gr.Markdown(visible=True)
 
@@ -161,7 +161,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         # Display Threat Model Table
         threat_table = gr.Dataframe(
             headers=["Risk", "Risk Score", "Threat Level", "Rationale", "Attack Strategies"],
-            interactive=False
+            interactive=False, show_copy_button=True
         )
 
         # Generate Threat Model interaction
@@ -171,6 +171,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             outputs=[app_name_display, app_capabilities_display, think_result, threat_table],
             show_progress=True
         )
+
 
     with gr.Tab("How it Works?"):
         gr.Markdown(
