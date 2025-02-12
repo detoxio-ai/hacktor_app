@@ -14,6 +14,9 @@ ENV PYTHONUNBUFFERED 1
 # Install dependencies
 RUN apt-get update && apt-get install -y curl
 
+RUN mkdir /data/
+RUN chown dtx:dtx -R /data/
+
 # Switch to user dtx
 USER dtx
 

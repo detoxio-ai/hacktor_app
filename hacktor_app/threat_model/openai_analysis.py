@@ -83,7 +83,7 @@ How to do it?
  4.2 Persona of the AI APP/Agent, if the agent has human touch
  4.3 Consider threat actors such as user providing prompts.
  4.4  Analyze relevant risks
- 4.6 Device attack strategies for each risk 
+ 4.6 Device atleast top 5 attack strategies on how an attacker using prompt can case threat as per risk
 3. Map to the risks. Assign the risk_score based on the likelihood. The risk_score follows CVSS score mechanism
 
 

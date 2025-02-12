@@ -111,7 +111,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             info="Select an attack module to generate a prompt."
         )
         goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt.")
-        generate_btn = gr.Button("Generate Prompt")
+        generate_btn = gr.Button("Generate Prompt", scale=0)
         generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False)
         with gr.Accordion("Techniques Used", open=False):
             technique_display = gr.Markdown(visible=True)
@@ -126,7 +126,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
     with gr.Tab("Evaluate Text"):
         gr.Markdown("## Evaluate Your Text")
         response = gr.Textbox(label="Enter Response for Evaluation", lines=5)
-        evaluate_btn = gr.Button("Evaluate Text")
+        evaluate_btn = gr.Button("Evaluate Text", scale=0)
         evaluation_result = gr.JSON(label="Evaluation Results")
 
         # Evaluate button interaction
