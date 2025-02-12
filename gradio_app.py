@@ -84,6 +84,30 @@ def generate_threat_model(agent_description):
     
     return app_name, app_capabilities, analysis_result.think, risks_table
 
+# # Function to generate 10 prompts
+# def generate_10_prompts_fn(session, num_prompts=10):
+#     if "analysis_result" not in session:
+#         return "", []
+    
+#     analysis_result = AnalysisResult(**session["analysis_result"])
+    
+#     # Generate test prompts
+#     app_test_prompts = risk_prompts_generator.generate(
+#         app_name=analysis_result.profile.app,
+#         think=analysis_result.think_result,
+#         risks=analysis_result.profile.risks,
+#         max_prompts=num_prompts
+#     )
+    
+#     # Prepare table data
+#     prompts_table = []
+#     for risk in app_test_prompts.risk_prompts:
+#         for prompt_obj in risk.test_prompts:
+#             prompts_table.append([risk.risk_name, risk.strategy, prompt_obj.prompt, prompt_obj.evaluation_criteria, prompt_obj.goal])
+    
+#     return prompts_table
+    
+
 
 # ------------------------
 # Gradio Interface
