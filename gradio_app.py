@@ -1,6 +1,7 @@
 import gradio as gr
 from dotenv import load_dotenv
 from hacktor_app.hacktor import HacktorClient
+from hacktor_app.threat_model.openai_analysis import AppRiskAnalysis, AnalysisResult
 import os
 import logging
 
@@ -12,13 +13,16 @@ logging.basicConfig(level=logging.INFO)
 
 # Constants
 MAX_USER_CLICK = 10
-click_count = 0  # Track the number of user actions
+click_count = 0  # Track user actions
 last_prompt = "NA"  # Keep track of the last generated prompt
 technique_used = ""
 
-# Determine DETOXIO_API_KEY
+# Load API keys
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
 dtx_hostname = os.getenv("DETOXIO_API_HOST", "api.detoxio.ai")
+
+prompt_conversion_dump_path = os.getenv("PROMPT_CONVERSATION_DUMP_PATH", "")
+threat_model_dump_path = os.getenv("THREAT_MODEL_DUMP_PATH", "")
 
 if not default_api_key:
     raise ValueError("Missing Detoxio API Key")
@@ -27,11 +31,18 @@ app_title = os.getenv("TITLE", "AI Red Teaming Companion")
 custom_api_key = None  # User-provided API key
 
 # Initialize Hacktor Client
-client = HacktorClient(default_api_key, dtx_hostname)
+client = HacktorClient(default_api_key, dtx_hostname, dump_file=prompt_conversion_dump_path)
 
-# Functions
+# Initialize AppRiskAnalysis
+risk_analyzer = AppRiskAnalysis(model="gpt-4o", temperature=0.2, dump_file=threat_model_dump_path)
+
+
+# ------------------------
+# Function Definitions
+# ------------------------
+
 def set_api_key(api_key):
-    """Set the custom API key from user input in advanced settings."""
+    """Set the custom API key from user input."""
     global client, custom_api_key
     custom_api_key = api_key.strip() if api_key else None
     client = HacktorClient(custom_api_key or default_api_key)
@@ -54,7 +65,30 @@ def evaluate_text(prompt, response):
         return {"Error": "No prompt provided for evaluation."}
     return client.evaluate(prompt, response)
 
-# Gradio App with Blocks
+
+def generate_threat_model(agent_description):
+    """Analyze the AI agent and return an AppRiskProfile in a formatted table."""
+    global click_count
+    click_count += 1
+    analysis_result = risk_analyzer.analyze(agent_description)
+
+    # Extract application info
+    app_name = analysis_result.profile.app.name
+    app_capabilities = "\n".join(f"- {cap}" for cap in analysis_result.profile.app.capabilities)
+
+    # Format risk details into a table
+    risks_table = [
+        [risk.risk, risk.risk_score, risk.threat_level, risk.rationale, "\n".join(f"- {strategy}" for strategy in risk.attack_strategies)]
+        for risk in analysis_result.profile.risks
+    ]
+    
+    return app_name, app_capabilities, analysis_result.think, risks_table
+
+
+# ------------------------
+# Gradio Interface
+# ------------------------
+
 with gr.Blocks(theme=gr.themes.Ocean()) as demo:
     # Title Section
     gr.HTML(
@@ -76,8 +110,8 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             value="",
             info="Select an attack module to generate a prompt."
         )
-        goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt. Example: Make Agent to Say I Love Donuts.")
-        generate_btn = gr.Button("Generate Prompt", scale=0)
+        goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt.")
+        generate_btn = gr.Button("Generate Prompt")
         generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False)
         with gr.Accordion("Techniques Used", open=False):
             technique_display = gr.Markdown(visible=True)
@@ -91,7 +125,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
 
     with gr.Tab("Evaluate Text"):
         gr.Markdown("## Evaluate Your Text")
-        response = gr.Textbox(label="Enter Response for Evaluation", lines=5, info="Enter the response you want to evaluate.")
+        response = gr.Textbox(label="Enter Response for Evaluation", lines=5)
         evaluate_btn = gr.Button("Evaluate Text")
         evaluation_result = gr.JSON(label="Evaluation Results")
 
@@ -100,6 +134,42 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             fn=evaluate_text,
             inputs=[generated_prompt, response],
             outputs=[evaluation_result]
+        )
+
+    with gr.Tab("Threat Modelling"):
+        gr.Markdown("## Threat Modelling for AI Agents")
+        agent_description = gr.Textbox(
+            label="Provide Agent Description",
+            placeholder="Describe the AI agent: name, functionality, purpose..."
+        )
+        
+
+        generate_threat_btn = gr.Button("Generate Threat Model", scale=0)
+
+        # Display AI App Info
+        gr.Markdown("#### AI Agent Information")
+        app_name_display = gr.Markdown("Nothing Yet", label="AI App Name")
+        gr.Markdown("#### Capabilities")
+        app_capabilities_display = gr.Markdown("Nothing Yet", label="Capabilities")
+
+    
+        # Display Thought Process
+        gr.Markdown("#### Analysis Summary")
+        think_result = gr.Markdown("Nothing Yet", label="Security Analyst's Thought Process")
+
+        gr.Markdown("#### Threat Model") 
+        # Display Threat Model Table
+        threat_table = gr.Dataframe(
+            headers=["Risk", "Risk Score", "Threat Level", "Rationale", "Attack Strategies"],
+            interactive=False
+        )
+
+        # Generate Threat Model interaction
+        generate_threat_btn.click(
+            fn=generate_threat_model,
+            inputs=[agent_description],
+            outputs=[app_name_display, app_capabilities_display, think_result, threat_table],
+            show_progress=True
         )
 
     with gr.Tab("How it Works?"):
@@ -118,28 +188,11 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             **Step 5:** Paste the LLM's response into the input box and hit **Evaluate Text**.
 
             **Step 6:** Review whether the response is classified as **SAFE** or **UNSAFE**.
+
+            **Step 7:** For AI security analysis, go to the **Threat Modelling** tab and input an AI agent description.
             
             **Optional:** Use your own Detoxio API Key by going to **Advanced Settings** and entering your key.
             """
-        )
-
-    # Advanced Settings Section
-    with gr.Accordion("Advanced Settings", open=False):
-        gr.Markdown("### Add or Update DETOXIO_API_KEY")
-        api_key_input = gr.Textbox(
-            label="DETOXIO_API_KEY (Optional)",
-            placeholder="Enter your DETOXIO_API_KEY here",
-            type="password",
-            info="Provide your DETOXIO_API_KEY for advanced features."
-        )
-        update_api_key_btn = gr.Button("Update API Key")
-        api_key_status = gr.Textbox(label="API Key Status", value="Using System Default Key", interactive=False)
-
-        # API Key update interaction
-        update_api_key_btn.click(
-            fn=set_api_key,
-            inputs=[api_key_input],
-            outputs=[api_key_status]
         )
 
     # Footer Section

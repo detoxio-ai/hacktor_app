@@ -12,3 +12,13 @@ services:
       - DETOXIO_API_KEY=${DETOXIO_API_KEY}  # Replace with your actual API key or set it as an environment variable
       - SERVER_PORT=${SERVER_PORT}
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PROMPT_CONVERSATION_DUMP_PATH=${PROMPT_CONVERSATION_DUMP_PATH}
+      - THREAT_MODEL_DUMP_PATH=${THREAT_MODEL_DUMP_PATH}
+    volumes:
+      - app_data:/data  # Mount the app_data volume to /data inside the container
+
+volumes:
+  app_data:
+    driver: local

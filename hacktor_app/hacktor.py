@@ -226,13 +226,14 @@ class HacktorClient:
         "HACKPROMPT": "DETOXIO.HACKPROMPT"
     }
 
-    def __init__(self, api_key, dtx_hostname:str=""):
+    def __init__(self, api_key, dtx_hostname:str="", dump_file:str=None):
         self.api_key = api_key
         dtx_hostname = dtx_hostname or "api.detoxio.ai"
         self.generate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/GeneratePrompts"
         self.evaluate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/EvaluateModelInteraction"
         self.update_prompt_woth_goal = PromptWithGoalGenerator()
-        self._dump_file = open("/tmp/prompt_goal_dump.jsonl", "a")
+        dump_file = dump_file or "/tmp/prompt_goal_dump.jsonl"
+        self._dump_file = open(dump_file, "a")
         self.extract_techniques = TechniqueExtractor()
 
     def generate(self, attack_module, goal=None, count=1):
@@ -283,18 +284,18 @@ class HacktorClient:
         except requests.exceptions.HTTPError as e:
             if response.status_code == 403:
                 logging.error("Forbidden - Invalid API Key")
-                return "Forbidden - Invalid API Key - Check your Key"
+                return "Forbidden - Invalid API Key - Check your Key", ""
             elif response.status_code == 404:
                 logging.error("Prompts Not Found for the given filer")
-                return "Prompts Not Found for the given filer"
+                return "Prompts Not Found for the given filer", ""
             logging.error(f"HTTP error occurred: {e}")
-            return f"HTTP error: {e}"
+            return f"HTTP error: {e}", ""
         except requests.exceptions.RequestException as e:
             logging.error(f"Error generating prompt: {e}")
-            return f"Error generating prompt: {e}"
+            return f"Error generating prompt: {e}", ""
         except Exception as e:
             logging.error(f"Error generating prompt: {e}")
-            return f"Unknown Error while generating prompt. Try Again !!!"
+            return f"Unknown Error while generating prompt. Try Again !!!", ""
 
     def evaluate(self, prompt, response):
         payload = {
