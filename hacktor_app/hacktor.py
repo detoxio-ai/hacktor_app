@@ -1,8 +1,9 @@
 
 import os
 import logging
+import random
+import httpx
 import requests
-import logging
 from groq import Groq
 from tenacity import retry, stop_after_attempt
 from dtx_apis_prompts_utils.prompt import DtxPromptServiceOutputFormatParser
@@ -29,31 +30,40 @@ class PromptExtractor:
         think_content = self.extract_content(text, "think")
         return {"prompt": prompt_content, "think": think_content}
 
-
 class GroqClient:
     """A client wrapper for interacting with the Groq API."""
-
+    
     def __init__(self, model="deepseek-r1-distill-llama-70b"):
-        self.client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        self.api_keys = self._load_api_keys()
+        self.http_client = httpx.Client()
         self.model = model
-
-    def invoke(self, prompt: str, system_prompt:str = None) -> str:
+    
+    def _load_api_keys(self):
+        """Load API keys from environment variables."""
+        api_keys = os.environ.get("GROQ_API_KEYS")
+        if api_keys:
+            return [key.strip() for key in api_keys.split(",") if key.strip()]
+        
+        api_key = os.environ.get("GROQ_API_KEY")
+        if api_key:
+            return [api_key.strip()]
+        
+        raise ValueError("No API keys found. Please set GROQ_API_KEYS or GROQ_API_KEY in environment variables.")
+    
+    def get_random_api_key(self):
+        """Return a random API key from the available keys."""
+        return random.choice(self.api_keys)
+    
+    def invoke(self, prompt: str, system_prompt: str = None) -> str:
         """Invoke the Groq API with a given prompt."""
+        groq_client = Groq(api_key=self.get_random_api_key(), http_client=self.http_client)
+        
         messages = []
         if system_prompt:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                }
-            )
-        messages.append(
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-        )
-        chat_completion = self.client.chat.completions.create(
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        chat_completion = groq_client.chat.completions.create(
             messages=messages,
             model=self.model,
         )
@@ -214,6 +224,7 @@ class HacktorClient:
         self.evaluate_url = f"https://{dtx_hostname}/dtx.services.prompts.v1.PromptService/EvaluateModelInteraction"
         self.update_prompt_woth_goal = PromptWithGoalGenerator()
         self._dump_file = open("/tmp/prompt_goal_dump.jsonl", "a")
+        self.extract_techniques = TechniqueExtractor()
 
     def generate(self, attack_module, goal=None, count=1):
         payload = {
@@ -241,20 +252,25 @@ class HacktorClient:
                 dtx_prompt = DtxPromptServiceOutputFormatParser.parse(prompt_data)                
                 prompt_content = dtx_prompt.prompt_as_str()
                 
+                technique_used = ""
                 if goal:
                     prompt_conv = self.update_prompt_woth_goal.generate(prompt_content, goal)
                     prompt_content = prompt_conv.new_prompt
                     # print(prompt_conv.model_dump())
                     self._dump_file.write(prompt_conv.model_dump_json() + "\n")
                     self._dump_file.flush()
+                    technique_used = prompt_conv.techniques
+                else:
+                    technique_used, _ = self.extract_techniques.generate(prompt_content)
+                    
 
                 # # Decode if base64 encoded
                 # if "_prompt_encoding" in prompt_data.get("sourceLabels", {}) and prompt_data["sourceLabels"]["_prompt_encoding"] == "base64":
                 #     prompt_content = base64.b64decode(prompt_content).decode("utf-8")
 
-                return prompt_content
+                return prompt_content, technique_used
             else:
-                return "No prompt generated."
+                return "No prompt generated.", ""
         except requests.exceptions.HTTPError as e:
             if response.status_code == 403:
                 logging.error("Forbidden - Invalid API Key")

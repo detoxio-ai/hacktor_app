@@ -13,7 +13,8 @@ logging.basicConfig(level=logging.INFO)
 # Constants
 MAX_USER_CLICK = 10
 click_count = 0  # Track the number of user actions
-last_prompt = ""  # Keep track of the last generated prompt
+last_prompt = "NA"  # Keep track of the last generated prompt
+technique_used = ""
 
 # Determine DETOXIO_API_KEY
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
@@ -43,10 +44,10 @@ def generate_prompt(attack_module, goal):
     """
     Generate a prompt based on the selected attack module and user goal.
     """
-    global click_count, last_prompt
+    global click_count, last_prompt, technique_used
     click_count += 1
-    last_prompt = client.generate(attack_module, goal=goal)
-    return last_prompt
+    last_prompt, technique_used = client.generate(attack_module, goal=goal)
+    return last_prompt, technique_used
 
 
 def evaluate_text(prompt, response):
@@ -85,12 +86,14 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt")
         generate_btn = gr.Button("Generate Prompt", elem_classes=["small-button"])
         generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False)
+        with gr.Accordion("Techniques Used", open=False):
+            technique_display = gr.Markdown("", visible=True)
 
         # Generate button interaction
         generate_btn.click(
             fn=generate_prompt,
             inputs=[attack_module, goal_input],
-            outputs=[generated_prompt],
+            outputs=[generated_prompt, technique_display],
         )
 
     with gr.Tab("Evaluate Text"):
@@ -127,6 +130,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             **Optional:** Use your own Detoxio API Key by going to **Advanced Settings** and entering your key.
             """
         )
+
 
     # Advanced Settings at the Bottom
     with gr.Accordion("Advanced Settings", open=False):
