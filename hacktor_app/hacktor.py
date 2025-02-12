@@ -21,9 +21,18 @@ class PromptExtractor:
         if start_index != -1 and end_index != -1:
             # Add the length of the start_tag to start_index to skip the tag itself.
             start_index += len(start_tag)
-            return text[start_index:end_index].strip()
+            final_text = text[start_index:end_index].strip()
+            ## Remove any traces of extra tags if available
+            cleaned_text = self._remove_words(final_text, [start_tag, end_tag])
+            return cleaned_text
         else:
             raise ValueError(f"No {tag_name} tag found in the text.")
+    
+    def _remove_words(self, text, words):
+        for word in words:
+            text = text.replace(word, "")
+        
+        return text
 
     def parse(self, text, out_tag="prompt", st="<", et=">"):
         prompt_content = self.extract_content(text, out_tag, st=st, et=et)
