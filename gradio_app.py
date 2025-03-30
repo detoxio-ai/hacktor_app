@@ -1,9 +1,11 @@
+import logging
+import os
+
 import gradio as gr
 from dotenv import load_dotenv
+
 from hacktor_app.hacktor import HacktorClient
-from hacktor_app.threat_model.openai_analysis import AppRiskAnalysis, AnalysisResult
-import os
-import logging
+from hacktor_app.threat_model.openai_analysis import AppRiskAnalysis
 
 # Load environment variables from .env file
 load_dotenv()
@@ -31,15 +33,20 @@ app_title = os.getenv("TITLE", "AI Red Teaming Companion")
 custom_api_key = None  # User-provided API key
 
 # Initialize Hacktor Client
-client = HacktorClient(default_api_key, dtx_hostname, dump_file=prompt_conversion_dump_path)
+client = HacktorClient(
+    default_api_key, dtx_hostname, dump_file=prompt_conversion_dump_path
+)
 
 # Initialize AppRiskAnalysis
-risk_analyzer = AppRiskAnalysis(model="gpt-4o", temperature=0.2, dump_file=threat_model_dump_path)
+risk_analyzer = AppRiskAnalysis(
+    model="gpt-4o", temperature=0.2, dump_file=threat_model_dump_path
+)
 
 
 # ------------------------
 # Function Definitions
 # ------------------------
+
 
 def set_api_key(api_key):
     """Set the custom API key from user input."""
@@ -74,23 +81,32 @@ def generate_threat_model(agent_description):
 
     # Extract application info
     app_name = analysis_result.profile.app.name
-    app_capabilities = "\n".join(f"- {cap}" for cap in analysis_result.profile.app.capabilities)
+    app_capabilities = "\n".join(
+        f"- {cap}" for cap in analysis_result.profile.app.capabilities
+    )
 
     # Format risk details into a table
     risks_table = [
-        [risk.risk, risk.risk_score, risk.threat_level, risk.rationale, "\n".join(f"- {strategy}" for strategy in risk.attack_strategies)]
+        [
+            risk.risk,
+            risk.risk_score,
+            risk.threat_level,
+            risk.rationale,
+            "\n".join(f"- {strategy}" for strategy in risk.attack_strategies),
+        ]
         for risk in analysis_result.profile.risks
     ]
-    
+
     return app_name, app_capabilities, analysis_result.think, risks_table
+
 
 # # Function to generate 10 prompts
 # def generate_10_prompts_fn(session, num_prompts=10):
 #     if "analysis_result" not in session:
 #         return "", []
-    
+
 #     analysis_result = AnalysisResult(**session["analysis_result"])
-    
+
 #     # Generate test prompts
 #     app_test_prompts = risk_prompts_generator.generate(
 #         app_name=analysis_result.profile.app,
@@ -98,15 +114,14 @@ def generate_threat_model(agent_description):
 #         risks=analysis_result.profile.risks,
 #         max_prompts=num_prompts
 #     )
-    
+
 #     # Prepare table data
 #     prompts_table = []
 #     for risk in app_test_prompts.risk_prompts:
 #         for prompt_obj in risk.test_prompts:
 #             prompts_table.append([risk.risk_name, risk.strategy, prompt_obj.prompt, prompt_obj.evaluation_criteria, prompt_obj.goal])
-    
+
 #     return prompts_table
-    
 
 
 # ------------------------
@@ -129,14 +144,18 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
     with gr.Tab("Generate Prompt"):
         gr.Markdown("## Generate a Text Prompt")
         attack_module = gr.Dropdown(
-            label="Attack Module",
+            label="Offensive Prompt Dataset",
             choices=[""] + list(HacktorClient.ATTACK_MODULES_MAP.keys()),
             value="",
-            info="Select an attack module to generate a prompt."
+            info="Select an attack module to generate a prompt.",
         )
-        goal_input = gr.Textbox(label="Goal (Optional)", placeholder="Enter a goal to refine the prompt.")
+        goal_input = gr.Textbox(
+            label="Goal (Optional)", placeholder="Enter a goal to refine the prompt."
+        )
         generate_btn = gr.Button("Generate Prompt", scale=0)
-        generated_prompt = gr.Textbox(label="Generated Prompt", lines=5, interactive=False, show_copy_button=True)
+        generated_prompt = gr.Textbox(
+            label="Generated Prompt", lines=5, interactive=False, show_copy_button=True
+        )
         with gr.Accordion("Techniques Used", open=False):
             technique_display = gr.Markdown(visible=True)
 
@@ -144,7 +163,7 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         generate_btn.click(
             fn=generate_prompt,
             inputs=[attack_module, goal_input],
-            outputs=[generated_prompt, technique_display]
+            outputs=[generated_prompt, technique_display],
         )
 
     with gr.Tab("Evaluate Text"):
@@ -157,16 +176,15 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         evaluate_btn.click(
             fn=evaluate_text,
             inputs=[generated_prompt, response],
-            outputs=[evaluation_result]
+            outputs=[evaluation_result],
         )
 
     with gr.Tab("Threat Modelling"):
         gr.Markdown("## Threat Modelling for AI Agents")
         agent_description = gr.Textbox(
             label="Provide Agent Description",
-            placeholder="Describe the AI agent: name, functionality, purpose..."
+            placeholder="Describe the AI agent: name, functionality, purpose...",
         )
-        
 
         generate_threat_btn = gr.Button("Generate Threat Model", scale=0)
 
@@ -176,26 +194,38 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
         gr.Markdown("#### Capabilities")
         app_capabilities_display = gr.Markdown("Nothing Yet", label="Capabilities")
 
-    
         # Display Thought Process
         gr.Markdown("#### Analysis Summary")
-        think_result = gr.Markdown("Nothing Yet", label="Security Analyst's Thought Process")
+        think_result = gr.Markdown(
+            "Nothing Yet", label="Security Analyst's Thought Process"
+        )
 
-        gr.Markdown("#### Threat Model") 
+        gr.Markdown("#### Threat Model")
         # Display Threat Model Table
         threat_table = gr.Dataframe(
-            headers=["Risk", "Risk Score", "Threat Level", "Rationale", "Attack Strategies"],
-            interactive=False, show_copy_button=True
+            headers=[
+                "Risk",
+                "Risk Score",
+                "Threat Level",
+                "Rationale",
+                "Attack Strategies",
+            ],
+            interactive=False,
+            show_copy_button=True,
         )
 
         # Generate Threat Model interaction
         generate_threat_btn.click(
             fn=generate_threat_model,
             inputs=[agent_description],
-            outputs=[app_name_display, app_capabilities_display, think_result, threat_table],
-            show_progress=True
+            outputs=[
+                app_name_display,
+                app_capabilities_display,
+                think_result,
+                threat_table,
+            ],
+            show_progress=True,
         )
-
 
     with gr.Tab("How it Works?"):
         gr.Markdown(
