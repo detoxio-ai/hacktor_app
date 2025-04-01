@@ -22,6 +22,7 @@ technique_used = ""
 # Load API keys
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
 dtx_hostname = os.getenv("DETOXIO_API_HOST", "api.detoxio.ai")
+CONCURRENCY_LIMIT = int(os.getenv("CONCURRENCY_LIMIT", 2))
 
 prompt_conversion_dump_path = os.getenv("PROMPT_CONVERSATION_DUMP_PATH", "")
 threat_model_dump_path = os.getenv("THREAT_MODEL_DUMP_PATH", "")
@@ -265,4 +266,5 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
 
 # Launch the app
 if __name__ == "__main__":
+    demo.queue(default_concurrency_limit=CONCURRENCY_LIMIT)
     demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("SERVER_PORT", 7860)))
