@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 
@@ -129,19 +131,21 @@ def generate_threat_model(agent_description):
 # Gradio Interface
 # ------------------------
 
-with gr.Blocks(theme=gr.themes.Ocean()) as demo:
-    # Title Section
-    gr.HTML(
-        f"""
-        <h1 style="text-align: center; background: -webkit-linear-gradient(#ff7f50, #1e90ff, #32cd32); -webkit-background-clip: text; color: transparent; font-size: 3.5em;">
-            {app_title}
-        </h1>
-        <div style="font-size: small; color: gray; text-align: center;">
-            Try Command Line Tool: <a href="https://github.com/detoxio-ai/hacktor" target="_blank">https://github.com/detoxio-ai/hacktor</a>
-        </div>
-        """
-    )
+red_black_theme = gr.themes.Ocean(
+    primary_hue="rose",
+    secondary_hue="rose",
+).set(
+    body_background_fill="linear-gradient(to bottom, #0f172a, #1e293b)",
+    body_background_fill_dark="linear-gradient(to bottom, #0f172a, #1e293b)",
+    block_background_fill="#1e293b",
+    block_background_fill_dark="#1e293b",
+    # Set text color to white
+    body_text_color="#ffffff",
+)
 
+my_theme = gr.Theme.from_hub("Taithrah/Minimal")
+
+with gr.Blocks(theme=my_theme) as demo:
     with gr.Tab("Generate Prompt"):
         gr.Markdown("## Generate a Text Prompt")
         attack_module = gr.Dropdown(
@@ -251,20 +255,26 @@ with gr.Blocks(theme=gr.themes.Ocean()) as demo:
             """
         )
 
-    # Footer Section
-    gr.HTML(
-        """
-        <hr>
-        <div style="text-align: center; font-size: 14px;">
-            Powered by <a href="https://detoxio.ai" target="_blank" style="color: #007BFF;">Detoxio AI</a>
-        </div>
-        <div style="text-align: center; font-size: 12px;">
-            Send us feedback at hello@detoxio.ai
-        </div>
-        """
-    )
+    # # Footer Section
+    # gr.HTML(
+    #     """
+    #     <hr>
+    #     <div style="text-align: center; font-size: 14px;">
+    #         Powered by <a href="https://detoxio.ai" target="_blank" style="color: #007BFF;">Detoxio AI</a>
+    #     </div>
+    #     <div style="text-align: center; font-size: 12px;">
+    #         Send us feedback at hello@detoxio.ai
+    #     </div>
+    #     """
+    # )
 
 # Launch the app
 if __name__ == "__main__":
     demo.queue(default_concurrency_limit=CONCURRENCY_LIMIT)
-    demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("SERVER_PORT", 7860)))
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.getenv("SERVER_PORT", 7860)),
+        show_error=True,
+        show_api=False,
+        prevent_thread_lock=True,
+    )
