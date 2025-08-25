@@ -6,12 +6,16 @@ import os
 import time
 from pathlib import Path
 from typing import List, Tuple
+from threading import Thread
 
 import gradio as gr
 from dotenv import load_dotenv
 
 from hacktor_app.hacktor import HacktorClient
 from hacktor_app.threat_model.openai_analysis import AppRiskAnalysis
+
+from hacktor_app.jailbreak.state import AdvanceRunState
+from hacktor_app.jailbreak.advanced_runner import run_advanced
 
 
 # -----------------------------------------------------------------------------
@@ -30,7 +34,9 @@ MAX_USER_CLICK = 10
 click_count = 0
 last_prompt = "NA"
 technique_used = ""
-_adv_should_stop = False  # stop flag for Advance Jailbreaks
+
+# Shared state for Advance Jailbreaks
+adv_state = AdvanceRunState()
 
 # Core env vars
 default_api_key = os.getenv("DETOXIO_API_KEY", "")
@@ -162,62 +168,6 @@ def _simple_transform(prompt: str, techniques: List[str]) -> str:
     return out
 
 
-def _run_advance_job(provider: str, model_name: str, api_key: str, goal: str, techniques: List[str]):
-    """
-    Simulate a multi-step run, using HacktorClient.generate when a technique
-    matches one of its modules. Yields:
-      (status_text, progress_value(0-100), best_score, logs_text)
-    """
-    global _adv_should_stop
-    _adv_should_stop = False
-
-    logs: List[str] = []
-    best_score = 0
-    total_steps = max(6, 2 + len(techniques) * 2)
-    step = 0
-
-    logs.append(f"Target: {provider} | Model: {model_name} | Key: {_mask_key(api_key)}")
-    yield f"Best Score: {best_score} | Status: In Progress", 3, best_score, "\n".join(logs)
-
-    for tech in techniques:
-        if _adv_should_stop:
-            yield f"Best Score: {best_score} | Status: Stopped", (step * 100) // total_steps, best_score, "\n".join(logs)
-            return
-
-        step += 1
-        logs.append(f"[{tech}] Preparing attack…")
-        yield f"Best Score: {best_score} | Status: In Progress", (step * 100) // total_steps, best_score, "\n".join(logs)
-        time.sleep(0.15)
-
-        try:
-            if hasattr(HacktorClient, "ATTACK_MODULES_MAP") and tech in HacktorClient.ATTACK_MODULES_MAP:
-                prompt, used = client.generate(tech, goal=goal or "")
-                sample = (prompt or "")[:140].replace("\n", " ")
-                logs.append(f"[{tech}] Prompt generated via HacktorClient: {sample}…")
-                best_score = max(best_score, min(10, max(1, len(prompt) // 160)))
-            else:
-                logs.append(f"[{tech}] (No built-in module) – step recorded.")
-                best_score = max(best_score, 1)
-        except Exception as e:
-            logs.append(f"[{tech}] Error: {e!r}")
-            yield f"Best Score: {best_score} | Status: Error", (step * 100) // total_steps, best_score, "\n".join(logs)
-            return
-
-        step += 1
-        yield f"Best Score: {best_score} | Status: In Progress", (step * 100) // total_steps, best_score, "\n".join(logs)
-        time.sleep(0.15)
-
-    while step < total_steps:
-        if _adv_should_stop:
-            yield f"Best Score: {best_score} | Status: Stopped", (step * 100) // total_steps, best_score, "\n".join(logs)
-            return
-        step += 1
-        yield f"Best Score: {best_score} | Status: In Progress", (step * 100) // total_steps, best_score, "\n".join(logs)
-        time.sleep(0.08)
-
-    yield f"Best Score: {best_score} | Status: Completed", 100, best_score, "\n".join(logs)
-
-
 # -----------------------------------------------------------------------------
 # UI
 # -----------------------------------------------------------------------------
@@ -323,8 +273,27 @@ with gr.Blocks(theme=my_theme, title=app_title) as demo:
         for c in (adv_provider, adv_model, adv_key, adv_techniques):
             c.change(_adv_can_run, inputs=[adv_provider, adv_model, adv_key, adv_techniques], outputs=[adv_run_btn])
 
-        # Run button (stream updates)
+        # Run button (real runner in background thread; stream updates)
         def _adv_on_run(provider, model, key, goal, techs):
+            # reset state & lock inputs
+            adv_state.set(status="In Progress", running=True, stop_flag=False, best_score=0.0, progress=None)
+            adv_state.clear_logs()
+            adv_state.append_log(f"Target: {provider} | Model: {model} | Key: {_mask_key(key)}")
+
+            worker = Thread(
+                target=run_advanced,
+                kwargs=dict(
+                    state=adv_state,
+                    provider=provider,
+                    model_name=model,
+                    api_key=key,
+                    goal=goal or "",
+                    techniques=techs or [],
+                ),
+                daemon=True,
+            )
+            worker.start()
+
             # lock inputs, enable Stop
             yield (
                 gr.update(interactive=False),
@@ -337,26 +306,37 @@ with gr.Blocks(theme=my_theme, title=app_title) as demo:
                 gr.update(value=0),
                 "Starting…",
             )
-            for status, prog, best, logs in _run_advance_job(provider, model, key, goal, techs):
+
+            # stream updates while the thread runs
+            while True:
+                snap = adv_state.snapshot()
+                status = f"Best Score: {snap['best_score']:.2f} | Status: {snap['status']}"
+                prog = int(round((snap["progress"] or 0.0) * 100))
+                logs = "\n".join(snap["logs"]) if snap["logs"] else "No logs yet."
                 yield (
                     gr.update(), gr.update(), gr.update(), gr.update(),
-                    gr.update(interactive=False),
-                    gr.update(interactive=True),
-                    status,
-                    gr.update(value=prog),
-                    logs or "No logs yet.",
+                    gr.update(interactive=False), gr.update(interactive=True),
+                    status, gr.update(value=prog), logs
                 )
-            # unlock inputs and reset Stop
+                if not snap["running"]:
+                    break
+                time.sleep(0.4)
+
+            # unlock inputs and finalize
+            final = adv_state.snapshot()
+            status = f"Best Score: {final['best_score']:.2f} | Status: {final['status']}"
+            prog = int(round((final["progress"] or (1.0 if final["status"] == "Completed" else 0.0)) * 100))
+            logs = "\n".join(final["logs"]) if final["logs"] else "No logs yet."
             yield (
                 gr.update(interactive=True),
                 gr.update(interactive=True),
                 gr.update(interactive=True),
                 gr.update(interactive=True),
-                gr.update(interactive=True),
-                gr.update(interactive=False),
+                gr.update(interactive=True),   # Run
+                gr.update(interactive=False),  # Stop
                 status,
-                gr.update(value=100),
-                logs or "No logs yet.",
+                gr.update(value=prog),
+                logs,
             )
 
         adv_run_btn.click(
@@ -366,10 +346,9 @@ with gr.Blocks(theme=my_theme, title=app_title) as demo:
             show_progress=True,
         )
 
-        # Stop button
+        # Stop button (cooperative)
         def _adv_stop():
-            global _adv_should_stop
-            _adv_should_stop = True
+            adv_state.set(stop_flag=True)
             return gr.update(interactive=True), gr.update(interactive=False)
 
         adv_stop_btn.click(_adv_stop, inputs=[], outputs=[adv_run_btn, adv_stop_btn])
@@ -488,5 +467,4 @@ if __name__ == "__main__":
         server_port=int(os.getenv("SERVER_PORT", 7860)),
         show_error=True,
         show_api=False,
-        # prevent_thread_lock defaults to False (blocking run, suitable for production)
     )
