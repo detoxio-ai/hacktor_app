@@ -11,7 +11,9 @@ RunStatus = Literal["Idle", "In Progress", "Stopped", "Error", "Completed"]
 class AdvanceRunState:
     status: RunStatus = "Idle"
     best_score: float = 0.0
-    progress: float | None = None  # 0..1, None => indeterminate
+    best_prompt: str = ""
+    best_response: str = ""
+    progress: float | None = None
     logs: List[str] = field(default_factory=list)
     running: bool = False
     stop_flag: bool = False
@@ -36,6 +38,8 @@ class AdvanceRunState:
             return {
                 "status": self.status,
                 "best_score": self.best_score,
+                "best_prompt": self.best_prompt,
+                "best_response": self.best_response,
                 "progress": self.progress,
                 "logs": list(self.logs),
                 "running": self.running,
